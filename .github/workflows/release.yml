@@ -28,6 +28,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: false
       - name: Build
         env:
           GOOS: ${{ matrix.goos }}
@@ -48,15 +49,28 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need full tag history to compute the next version
+      - name: Compute next version
+        id: version
+        run: |
+          last=$(git tag -l 'v*.*.*' | sort -V | tail -n1)
+          if [ -z "$last" ]; then
+            next="v0.1.0"
+          else
+            IFS='.' read -r major minor patch <<< "${last#v}"
+            next="v${major}.${minor}.$((patch + 1))"
+          fi
+          echo "version=$next" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: Latest build
-          body: Automated build from the latest commit on main (${{ github.sha }}).
-          prerelease: true
-          make_latest: false
+          tag_name: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          make_latest: true
           files: dist/*

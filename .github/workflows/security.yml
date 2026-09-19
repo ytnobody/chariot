@@ -30,4 +30,5 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: false
       - uses: golang/govulncheck-action@v1
